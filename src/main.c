@@ -169,7 +169,7 @@ void test(char tab[DIML][DIMC])
 int main(void)
 {
     srand(time(NULL));
-    system("clear");
+    system("cls");
 
     char table_de_jeu[DIML][DIMC];
 
@@ -181,7 +181,7 @@ int main(void)
     {
         test(table_de_jeu);
         affiche_jeu(table_de_jeu);
-        usleep(100000);
-        system("clear");
+        //usleep(100000);
+        system("cls");
     }
 }
