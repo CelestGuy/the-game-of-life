@@ -6,6 +6,11 @@
 #define DIMC 40
 #define DIML 40
 
+enum cell_state {
+    DEAD,
+    ALIVE
+};
+
 int tab_length(char tab[])
 {
     int length = 0;
@@ -18,13 +23,13 @@ int tab_length(char tab[])
     return length;
 }
 
-void copie(char origine[DIML][DIMC], char destination[DIML][DIMC])
+void copy(char src[DIML][DIMC], char dest[DIML][DIMC])
 {
     for (int i = 0; i < DIML; i++)
     {
         for (int j = 0; j < DIMC; j++)
         {
-            destination[i][j] = origine[i][j];
+            dest[i][j] = src[i][j];
         }
     }
 }
@@ -41,70 +46,68 @@ void fill_random_values(char tab[DIML][DIMC])
             switch (r)
             {
             case 0:
-                tab[i][j] = '0';
+                tab[i][j] = ALIVE;
                 break;
             case 4:
-                tab[i][j] = '0';
+                tab[i][j] = ALIVE;
                 break;
             case 9:
-                tab[i][j] = '0';
+                tab[i][j] = ALIVE;
                 break;
             case 14:
-                tab[i][j] = '0';
+                tab[i][j] = ALIVE;
                 break;
             case 19:
-                tab[i][j] = '0';
+                tab[i][j] = ALIVE;
                 break;
             default:
-                tab[i][j] = '1';
+                tab[i][j] = DEAD;
                 break;
             }
         }
     }
 }
 
-void affiche_jeu(char tab[DIML][DIMC])
-{
+void clear() {
     for (int i = 0; i < DIML; i++)
     {
+        char row[DIMC * 2];
         for (int j = 0; j < DIMC; j++)
         {
-            if (tab[i][j] == '0')
-            {
-                printf("\033[47m  \033[0m");
-            }
-            else if (tab[i][j] == '1')
-            {
-                printf("\033[40m  \033[0m");
-            }
+            row[j] = ' ';
+            row[j + 1] = ' ';
         }
-        printf("\n");
+        printf("\r%s", row);
     }
 }
 
-void fill(char tab[DIML][DIMC])
+void render(char pixels[DIML][DIMC])
 {
+    char *screen = malloc(sizeof(char) * DIML * ((DIMC + 1) * 2));
     for (int i = 0; i < DIML; i++)
     {
         for (int j = 0; j < DIMC; j++)
         {
-            tab[i][j] = '1';
-        }
-    }
+            char filling_char = ' ';
+            if (pixels[i][j] == ALIVE)
+            {
+                filling_char = 'X';
+            }
 
-    tab[7][8] = '0';
-    tab[7][10] = '0';
-    tab[8][8] = '0';
-    tab[8][10] = '0';
-    tab[9][8] = '0';
-    tab[9][9] = '0';
-    tab[9][10] = '0';
+            screen[(i * DIML) + (j * 2)] = filling_char;
+            screen[(i * DIML) + (j * 2 + 1)] = filling_char;
+        }
+        screen[(i * DIML) + (DIMC * 2)] = '\n';
+    }
+    printf("%s", screen);
+    fflush(stdout);
+    free(screen);
 }
 
 void test(char tab[DIML][DIMC])
 {
-    char copy[DIML][DIMC];
-    copie(tab, copy);
+    char buffer[DIML][DIMC];
+    copy(tab, buffer);
 
     int nombre_cellules;
 
@@ -114,53 +117,53 @@ void test(char tab[DIML][DIMC])
         {
             nombre_cellules = 0;
 
-            if (copy[i][j + 1] == '0')
+            if (buffer[i][j + 1] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i + 1][j] == '0')
+            if (buffer[i + 1][j] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i + 1][j + 1] == '0')
+            if (buffer[i + 1][j + 1] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i][j - 1] == '0')
+            if (buffer[i][j - 1] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i - 1][j] == '0')
+            if (buffer[i - 1][j] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i - 1][j - 1] == '0')
+            if (buffer[i - 1][j - 1] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i + 1][j - 1] == '0')
+            if (buffer[i + 1][j - 1] == ALIVE)
             {
                 nombre_cellules++;
             }
-            if (copy[i - 1][j + 1] == '0')
+            if (buffer[i - 1][j + 1] == ALIVE)
             {
                 nombre_cellules++;
             }
 
             if (nombre_cellules == 2 || nombre_cellules == 3)
             {
-                if (nombre_cellules == 3 && copy[i][j] == '1')
+                if (nombre_cellules == 3 && buffer[i][j] == DEAD)
                 {
-                    tab[i][j] = '0';
+                    tab[i][j] = ALIVE;
                 }
-                else if (nombre_cellules == 2 && copy[i][j] == '0')
+                else if (nombre_cellules == 2 && buffer[i][j] == ALIVE)
                 {
-                    tab[i][j] = '0';
+                    tab[i][j] = ALIVE;
                 }
             }
             else
             {
-                tab[i][j] = '1';
+                tab[i][j] = DEAD;
             }
         }
     }
@@ -169,19 +172,19 @@ void test(char tab[DIML][DIMC])
 int main(void)
 {
     srand(time(NULL));
-    system("cls");
 
     char table_de_jeu[DIML][DIMC];
 
     fill_random_values(table_de_jeu);
-    //fill(table_de_jeu);
-    affiche_jeu(table_de_jeu);
+    render(table_de_jeu);
 
-    while (1)
+    for (;;)
     {
-        test(table_de_jeu);
-        affiche_jeu(table_de_jeu);
-        //usleep(100000);
+        printf("Game\n");
+        //clear();
         system("cls");
+        test(table_de_jeu);
+        render(table_de_jeu);
+        usleep(100000);
     }
 }
