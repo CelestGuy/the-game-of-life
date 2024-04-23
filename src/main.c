@@ -68,95 +68,77 @@ void fill_random_values(char tab[DIML][DIMC])
     }
 }
 
-void clear() {
-    for (int i = 0; i < DIML; i++)
-    {
-        char row[DIMC * 2];
-        for (int j = 0; j < DIMC; j++)
-        {
-            row[j] = ' ';
-            row[j + 1] = ' ';
-        }
-        printf("\r%s", row);
-    }
-}
-
 void render(char pixels[DIML][DIMC])
 {
-    char *screen = malloc(sizeof(char) * DIML * ((DIMC + 1) * 2));
     for (int i = 0; i < DIML; i++)
     {
         for (int j = 0; j < DIMC; j++)
         {
-            char filling_char = ' ';
+            char filling_char = '.';
             if (pixels[i][j] == ALIVE)
             {
                 filling_char = 'X';
             }
 
-            screen[(i * DIML) + (j * 2)] = filling_char;
-            screen[(i * DIML) + (j * 2 + 1)] = filling_char;
+            printf("%c", filling_char);
         }
-        screen[(i * DIML) + (DIMC * 2)] = '\n';
+        printf("\n");
     }
-    printf("%s", screen);
-    fflush(stdout);
-    free(screen);
 }
 
-void test(char tab[DIML][DIMC])
+void update(char tab[DIML][DIMC])
 {
     char buffer[DIML][DIMC];
     copy(tab, buffer);
 
-    int nombre_cellules;
+    int cell_count;
 
     for (int i = 0; i < DIML; i++)
     {
         for (int j = 0; j < DIMC; j++)
         {
-            nombre_cellules = 0;
+            cell_count = 0;
 
             if (buffer[i][j + 1] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i + 1][j] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i + 1][j + 1] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i][j - 1] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i - 1][j] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i - 1][j - 1] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i + 1][j - 1] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
             if (buffer[i - 1][j + 1] == ALIVE)
             {
-                nombre_cellules++;
+                cell_count++;
             }
 
-            if (nombre_cellules == 2 || nombre_cellules == 3)
+            if (cell_count == 2 || cell_count == 3)
             {
-                if (nombre_cellules == 3 && buffer[i][j] == DEAD)
+                if (cell_count == 3 && buffer[i][j] == DEAD)
                 {
                     tab[i][j] = ALIVE;
                 }
-                else if (nombre_cellules == 2 && buffer[i][j] == ALIVE)
+                else if (cell_count == 2 && buffer[i][j] == ALIVE)
                 {
                     tab[i][j] = ALIVE;
                 }
@@ -173,18 +155,16 @@ int main(void)
 {
     srand(time(NULL));
 
-    char table_de_jeu[DIML][DIMC];
+    char pixels[DIML][DIMC];
 
-    fill_random_values(table_de_jeu);
-    render(table_de_jeu);
+    fill_random_values(pixels);
 
     for (;;)
     {
+        system("clear");
         printf("Game\n");
-        //clear();
-        system("cls");
-        test(table_de_jeu);
-        render(table_de_jeu);
-        usleep(100000);
+        update(pixels);
+        render(pixels);
+        sleep(1);
     }
 }
