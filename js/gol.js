@@ -57,16 +57,19 @@ class ToggleState extends MouseState {
 
 function lineSpacing() { return cellSizePx * scale; }
 
-function init() {
-    window.addEventListener("resize", setCanvasSize);
-    setCanvasSize();
-
+function setCells() {
     for (let i = 0; i < worldSize; i++) {
         cells[i] = [];
         for (let j = 0; j < worldSize; j++) {
             cells[i][j] = false;
         }
     }
+}
+
+function init() {
+    window.addEventListener("resize", setCanvasSize);
+    setCanvasSize();
+    setCells();
 }
 
 function setCanvasSize() {
@@ -96,8 +99,7 @@ function pause() {
 }
 
 function reset() {
-    clearInterval(interval);
-    interval = null;
+    setCells();
 }
 
 /**
