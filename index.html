@@ -5,28 +5,15 @@
     <title>Conway's Game Of Life</title>
 
     <link rel="stylesheet" href="bootstrap/css/bootstrap.min.css"/>
-    <script src="bootstrap/js/bootstrap.js"></script>
-    <script src="js/gol.js"></script>
 </head>
 
 <body id="body-pd" style="overflow-y: hidden">
-<main class="container-fluid flex-fill">
-    <div class="row">
-        <div class="col-2 sidebar-sticky" style="background-color: blue">
-            <button onclick="play()">play</button>
-            <button onclick="pause()">pause</button>
-            <button onclick="reset()">reset</button>
 
-            <button onclick="setState(MovingState)">move</button>
-            <button onclick="setState(ToggleState)">toggle</button>
-        </div>
-        <div class="col-10" style="background-color: orange">
-            <canvas class="w-100 vh-100 min-vh-100 h-100" id="lifeCanvas">
+<canvas id="lifeCanvas" style="background-color: black">
+</canvas>
 
-            </canvas>
-        </div>
-    </div>
-</main>
+<script src="js/gol.js"></script>
+<script src="bootstrap/js/bootstrap.js"></script>
 
 </body>
 </html>
