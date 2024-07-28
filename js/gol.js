@@ -3,8 +3,8 @@ let scale = 2;
 
 let loopTimeMs = 128;
 
-let vOffset = 0;
-let hOffset = 0;
+let xOffset = 0;
+let yOffset = 0;
 
 let interval;
 
@@ -13,7 +13,11 @@ let cells = [];
 
 let isRunning = false;
 
-class MouseState {
+class GameState {
+    onMouseUp(e) {}
+
+    onMouseDown(e) {}
+
     /**
      * @param {MouseEvent} e
      */
@@ -27,24 +31,73 @@ class MouseState {
     onMouseDrag(e) {
 
     }
+
+    /**
+     * @param {WheelEvent} e
+     */
+    onWheel(e) {
+        console.log(e.deltaY);
+    }
 }
 
-class MovingState extends MouseState {
-    onMouseClick(e) {
-        super.onMouseClick(e);
+class PauseState extends GameState {
+    startX = 0;
+    startY = 0;
+    isDown = false;
+    coordsUpdated = [];
+
+    onMouseDown(e) {
+        e.preventDefault();
+        this.startX = e.clientX;
+        this.startY = e.clientY;
+        this.isDown = true;
+    }
+
+    onMouseUp(e) {
+        e.preventDefault();
+        this.isDown = false;
         let pos = mousePosToWorldPos(e);
 
-        console.log(pos);
-        cells[pos[0]][pos[1]] = !cells[pos[0]][pos[1]];
+        if (this.coordsUpdated === undefined) {
+            this.coordsUpdated = [];
+        }
 
+        console.log(pos);
+
+        if (!this.coordsUpdated.includes(pos)) {
+            cells[pos[0]][pos[1]] = !cells[pos[0]][pos[1]];
+        }
+
+        this.coordsUpdated = [];
+    }
+
+    onMouseClick(e) {
     }
 
     onMouseDrag(e) {
         super.onMouseDrag(e);
+
+        if (this.isDown) {
+            let pos = mousePosToWorldPos(e);
+
+            if (!this.coordsUpdated.includes(pos)) {
+                cells[pos[0]][pos[1]] = !cells[pos[0]][pos[1]];
+                this.coordsUpdated.push(pos);
+            }
+        }
+    }
+
+    onWheel(e) {
+        scale = Math.max(0.5, scale + (scale * (e.deltaY / 100)));
+        console.log(scale);
     }
 }
 
-class ToggleState extends MouseState {
+class PlayState extends GameState {
+    onMouseUp(e) {}
+
+    onMouseDown(e) {}
+
     onMouseClick(e) {
         super.onMouseClick(e);
     }
@@ -55,7 +108,7 @@ class ToggleState extends MouseState {
 }
 
 
-function lineSpacing() { return cellSizePx * scale; }
+function getScaledCellSize() { return cellSizePx * scale; }
 
 function setCells() {
     for (let i = 0; i < worldSize; i++) {
@@ -85,26 +138,30 @@ function setCanvasSize() {
  */
 function mousePosToWorldPos(mouseEvent) {
     return [
-        Math.floor((mouseEvent.clientX - hOffset) / lineSpacing()),
-        Math.floor((mouseEvent.clientY - vOffset) / lineSpacing())
+        Math.floor((mouseEvent.clientX - xOffset) / getScaledCellSize()),
+        Math.floor((mouseEvent.clientY - yOffset) / getScaledCellSize())
     ];
 }
 
 function play() {
     isRunning = true;
+    setState(new PlayState());
 }
 
 function pause() {
     isRunning = false;
+    setState(new PauseState());
 }
 
 function reset() {
+    isRunning = false;
     setCells();
+    setState(new PauseState());
 }
 
 /**
  * Sets the cursor's state
- * @param {MouseState} state
+ * @param {GameState} state
  */
 function setState(state) {
     /**
@@ -112,8 +169,11 @@ function setState(state) {
      */
     const lifeCanvas = (document.getElementById("lifeCanvas"));
 
+    lifeCanvas.onmouseup = state.onMouseUp;
+    lifeCanvas.onmousedown = state.onMouseDown;
     lifeCanvas.onclick = state.onMouseClick;
     lifeCanvas.onmousemove = state.onMouseDrag;
+    lifeCanvas.onwheel = state.onWheel;
 }
 
 function mod(v, d) {
@@ -185,31 +245,6 @@ function clear(canvas) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-/**
- * @param {HTMLCanvasElement} canvas
- */
-function renderGrid(canvas) {
-    const ctx = canvas.getContext("2d");
-
-    const lineCountV = canvas.height / lineSpacing();
-    const lineCountH = canvas.width / lineSpacing();
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
-
-    for (let i = 0; i < lineCountH; i++) {
-        const x = i * lineSpacing() + hOffset;
-        drawLine(ctx, x, 0, x, height);
-    }
-    for (let j = 0; j < lineCountV; j++) {
-        const y = j * lineSpacing() + vOffset;
-        drawLine(ctx, 0, y, width, y);
-    }
-}
-
 function drawLine(ctx, x1, y1, x2, y2) {
     ctx.beginPath();
     ctx.moveTo(x1, y1);
@@ -218,27 +253,83 @@ function drawLine(ctx, x1, y1, x2, y2) {
     ctx.stroke();
 }
 
-function drawCell(ctx, x, y) {
-    ctx.beginPath();
-    ctx.rect(x, y, cellSizePx * scale, cellSizePx * scale);
-    ctx.fill();
-    ctx.closePath();
+function clamp(v, min, max) {
+    return Math.min(Math.max(v, min), max);
 }
 
 /**
  * @param {HTMLCanvasElement} canvas
  */
-function renderCells(canvas) {
+function drawGrid(canvas) {
     const ctx = canvas.getContext("2d");
 
+    const lineCountV = canvas.height / getScaledCellSize();
+    const lineCountH = canvas.width / getScaledCellSize();
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    const scaledCell = getScaledCellSize();
+    const hOffset = mod(xOffset, scaledCell);
+    const vOffset = mod(yOffset, scaledCell);
+
+    ctx.fillStyle = "#111";
+    ctx.strokeStyle = "#333";
+    ctx.lineWidth = 1;
+
+    const x1 = clamp(xOffset, 0, width);
+    const y1 = clamp(yOffset, 0, height);
+
+    const x2 = clamp(worldSize * scaledCell + xOffset, 0, width);
+    const y2 = clamp(worldSize * scaledCell + yOffset, 0, height);
+
+    drawRect(ctx, x1, y1, x2, y2);
+
+    for (let i = 0; i < lineCountH; i++) {
+        const x = i * scaledCell + hOffset;
+        drawLine(ctx, x, 0, x, height);
+    }
+    for (let j = 0; j < lineCountV; j++) {
+        const y = j * scaledCell + vOffset;
+        drawLine(ctx, 0, y, width, y);
+    }
+}
+
+function drawRect(ctx, x1, y1, x2, y2) {
+    const x = Math.min(x1, x2);
+    const y = Math.min(y1, y2);
+    const width = Math.abs(x2 - x1);
+    const height = Math.abs(y2 - y1);
+
+    ctx.beginPath();
+    ctx.rect(x, y, width, height);
+    ctx.fill();
+    ctx.closePath();
+}
+
+function drawCell(ctx, x, y) {
+    const scaledCell = getScaledCellSize();
+    drawRect(ctx, x, y, x + scaledCell, y + scaledCell);
+}
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ */
+function drawCells(canvas) {
+    const ctx = canvas.getContext("2d");
+
+    const scaledCell = getScaledCellSize();
     ctx.fillStyle = "#FFF";
 
     for (let i = 0; i < cells.length; i++) {
         for (let j = 0; j < cells[i].length; j++) {
             if (cells[i][j] === true) {
-                const y = j * lineSpacing() + vOffset;
-                const x = i * lineSpacing() + hOffset;
-                drawCell(ctx, x, y);
+                const y = j * scaledCell + yOffset;
+                const x = i * scaledCell + xOffset;
+
+                if (x + scaledCell >= 0 && x < canvas.width && y + scaledCell >= 0 && y < canvas.height) {
+                    drawCell(ctx, x, y);
+                }
             }
         }
     }
@@ -249,8 +340,8 @@ function renderCells(canvas) {
  */
 function render(lifeCanvas) {
     clear(lifeCanvas);
-    renderGrid(lifeCanvas);
-    renderCells(lifeCanvas);
+    drawGrid(lifeCanvas);
+    drawCells(lifeCanvas);
 }
 
 function loop() {
@@ -262,6 +353,8 @@ function loop() {
         }
 
         render(lifeCanvas);
+        // xOffset += 1;
+        // yOffset += 1;
 
     }, loopTimeMs);
 }
@@ -269,5 +362,5 @@ function loop() {
 (function () {
     init();
     loop();
-    setState(new MovingState());
+    setState(new PauseState());
 })();
