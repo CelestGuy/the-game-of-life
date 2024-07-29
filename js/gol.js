@@ -1,17 +1,43 @@
 let cellSizePx = 16;
-let scale = 2;
+let scale = 1;
 
 let loopTimeMs = 128;
 
 let xOffset = 0;
 let yOffset = 0;
 
-let interval;
+let updateInterval;
+let renderInterval;
 
 let worldSize = 64;
 let cells = [];
 
 let isRunning = false;
+
+class Coords {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+    }
+}
+
+/**
+ *
+ * @param {Coords} coords
+ * @param {Coords[]} array
+ */
+function containsCoords(coords, array) {
+    for (let i = 0; i < array.length; i++) {
+        if (array[i].x === coords.x && array[i].y === coords.y) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function clamp(v, min, max) {
+    return Math.min(Math.max(v, min), max);
+}
 
 class GameState {
     onMouseUp(e) {}
@@ -21,22 +47,29 @@ class GameState {
     /**
      * @param {MouseEvent} e
      */
-    onMouseClick(e) {
-
-    }
+    onMouseClick(e) {}
 
     /**
      * @param {MouseEvent} e
      */
-    onMouseDrag(e) {
-
-    }
+    onMouseDrag(e) {}
 
     /**
      * @param {WheelEvent} e
      */
     onWheel(e) {
-        console.log(e.deltaY);
+        scale = Math.max(0.5, scale + (scale * (e.deltaY / 10000)));
+        console.log(scale);
+    }
+}
+
+/**
+ * @param {Coords} pos
+ * @param cells
+ */
+function invertCellValue(pos, cells) {
+    if (pos.x >= 0 && pos.x < worldSize && pos.y >= 0 && pos.y < worldSize) {
+        cells[pos.x][pos.y] = !cells[pos.x][pos.y];
     }
 }
 
@@ -51,24 +84,17 @@ class PauseState extends GameState {
         this.startX = e.clientX;
         this.startY = e.clientY;
         this.isDown = true;
+        this.coordsUpdated = [];
     }
 
     onMouseUp(e) {
-        e.preventDefault();
         this.isDown = false;
         let pos = mousePosToWorldPos(e);
 
-        if (this.coordsUpdated === undefined) {
-            this.coordsUpdated = [];
+        if (!containsCoords(pos, this.coordsUpdated)) {
+            invertCellValue(pos, cells);
+            this.coordsUpdated.push(pos);
         }
-
-        console.log(pos);
-
-        if (!this.coordsUpdated.includes(pos)) {
-            cells[pos[0]][pos[1]] = !cells[pos[0]][pos[1]];
-        }
-
-        this.coordsUpdated = [];
     }
 
     onMouseClick(e) {
@@ -80,23 +106,30 @@ class PauseState extends GameState {
         if (this.isDown) {
             let pos = mousePosToWorldPos(e);
 
-            if (!this.coordsUpdated.includes(pos)) {
-                cells[pos[0]][pos[1]] = !cells[pos[0]][pos[1]];
+            console.log(this.coordsUpdated, this.coordsUpdated.includes(pos));
+
+            if (!containsCoords(pos, this.coordsUpdated)) {
+                invertCellValue(pos, cells);
                 this.coordsUpdated.push(pos);
             }
         }
     }
-
-    onWheel(e) {
-        scale = Math.max(0.5, scale + (scale * (e.deltaY / 100)));
-        console.log(scale);
-    }
 }
 
 class PlayState extends GameState {
-    onMouseUp(e) {}
+    startX = 0;
+    startY = 0;
+    isDown = false;
 
-    onMouseDown(e) {}
+    onMouseUp(e) {
+        this.isDown = false;
+    }
+
+    onMouseDown(e) {
+        this.isDown = true;
+        this.startX = e.clientX;
+        this.startY = e.clientY;
+    }
 
     onMouseClick(e) {
         super.onMouseClick(e);
@@ -104,6 +137,13 @@ class PlayState extends GameState {
 
     onMouseDrag(e) {
         super.onMouseDrag(e);
+
+        if (this.isDown) {
+            xOffset += (e.clientX - this.startX);
+            yOffset += (e.clientY - this.startY);
+            this.startX = e.clientX;
+            this.startY = e.clientY;
+        }
     }
 }
 
@@ -134,13 +174,13 @@ function setCanvasSize() {
 
 /**
  * @param {MouseEvent} mouseEvent
- * @returns {number[2]}
+ * @returns {Coords}
  */
 function mousePosToWorldPos(mouseEvent) {
-    return [
+    return new Coords(
         Math.floor((mouseEvent.clientX - xOffset) / getScaledCellSize()),
         Math.floor((mouseEvent.clientY - yOffset) / getScaledCellSize())
-    ];
+    );
 }
 
 function play() {
@@ -169,11 +209,25 @@ function setState(state) {
      */
     const lifeCanvas = (document.getElementById("lifeCanvas"));
 
-    lifeCanvas.onmouseup = state.onMouseUp;
-    lifeCanvas.onmousedown = state.onMouseDown;
-    lifeCanvas.onclick = state.onMouseClick;
-    lifeCanvas.onmousemove = state.onMouseDrag;
-    lifeCanvas.onwheel = state.onWheel;
+    lifeCanvas.onmouseup = (e => {
+        state.onMouseUp(e);
+    });
+
+    lifeCanvas.onmousedown = (e => {
+        state.onMouseDown(e);
+    });
+
+    lifeCanvas.onclick = (e => {
+        state.onMouseClick(e);
+    });
+
+    lifeCanvas.onmousemove = (e => {
+        state.onMouseDrag(e);
+    });
+
+    lifeCanvas.onwheel = (e => {
+        state.onWheel(e);
+    });
 }
 
 function mod(v, d) {
@@ -211,10 +265,7 @@ function countNeighbours(x, y, cells) {
     return res;
 }
 
-/**
- @param {HTMLCanvasElement} lifeCanvas
- */
-function update(lifeCanvas) {
+function update() {
     let copy = copyCells(cells);
 
     for (let i = 0; i < worldSize; i++) {
@@ -251,10 +302,6 @@ function drawLine(ctx, x1, y1, x2, y2) {
     ctx.lineTo(x2, y2);
     ctx.closePath();
     ctx.stroke();
-}
-
-function clamp(v, min, max) {
-    return Math.min(Math.max(v, min), max);
 }
 
 /**
@@ -345,17 +392,14 @@ function render(lifeCanvas) {
 }
 
 function loop() {
-    interval = setInterval(() => {
-        const lifeCanvas = document.getElementById("lifeCanvas");
-
+    updateInterval = setInterval(() => {
         if (isRunning) {
-            update(lifeCanvas);
+            update();
         }
+    }, loopTimeMs);
 
-        render(lifeCanvas);
-        // xOffset += 1;
-        // yOffset += 1;
-
+    renderInterval = setInterval(() => {
+        render(document.getElementById("lifeCanvas"));
     }, loopTimeMs);
 }
 
