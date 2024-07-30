@@ -8,19 +8,27 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
     <script src="js/gol.js" defer> </script>
-    <script src="bootstrap/js/bootstrap.js"></script>
+    <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
 </head>
 
 <body style="overflow-y: hidden">
 
 <div class="z-3 d-flex justify-content-center">
     <div class="p-4 rounded-5 position-absolute bg-light">
-        <button class="btn btn-info" onclick="play()"><i class="bi bi-play-fill"></i></button>
-        <button class="btn btn-warning" onclick="pause()"><i class="bi bi-pause-fill"></i></button>
-        <button class="btn btn-danger" onclick="reset()"><i class="bi bi-trash-fill"></i></button>
-        <button class="btn btn-secondary disabled"><i class="bi bi-clock-history"></i></button>
-        <button class="btn btn-secondary disabled"><i class="bi bi-speedometer2"></i></button>
+        <button id="playButton" class="btn btn-info gol-control-button" onclick="play()"><i class="bi bi-play-fill"></i></button>
+        <button id="pauseButton" class="btn btn-warning gol-control-button" onclick="pause()"><i class="bi bi-pause-fill"></i></button>
+        <button class="btn btn-danger gol-control-button" onclick="reset()"><i class="bi bi-trash-fill"></i></button>
+        <button id="historyButton" class="d-none btn btn-secondary disabled"><i class="bi bi-clock-history"></i></button>
+        <button id="speedButton" class="btn btn-secondary"><i class="bi bi-speedometer2"></i></button>
     </div>
+</div>
+
+<div id="historyControl" class="d-none">
+    <input type="range" min="0" max="0" onchange="onHistoryChange(this)"/>
+</div>
+
+<div id="speedControl" class="d-none">
+    <input type="range" class="form-range" min="1" max="20" value="10" step="1" oninput="onSpeedChange(this)"/>
 </div>
 
 <canvas id="lifeCanvas" style="background-color: black">

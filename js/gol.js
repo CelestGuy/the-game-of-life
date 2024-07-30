@@ -3,6 +3,9 @@ let scale = 1;
 
 let loopTimeMs = 128;
 
+let baseSpeed = 1000;
+let speed = 10;
+
 let xOffset = 0;
 let yOffset = 0;
 
@@ -13,6 +16,8 @@ let worldSize = 64;
 let cells = [];
 
 let isRunning = false;
+
+let history = [];
 
 class Coords {
     constructor(x, y) {
@@ -60,6 +65,10 @@ class GameState {
     onWheel(e) {
         scale = Math.max(0.5, scale + (scale * (e.deltaY / 10000)));
         console.log(scale);
+    }
+
+    getButtonId() {
+        return "";
     }
 }
 
@@ -114,6 +123,10 @@ class PauseState extends GameState {
             }
         }
     }
+
+    getButtonId() {
+        return "pauseButton";
+    }
 }
 
 class PlayState extends GameState {
@@ -145,8 +158,11 @@ class PlayState extends GameState {
             this.startY = e.clientY;
         }
     }
-}
 
+    getButtonId() {
+        return "playButton";
+    }
+}
 
 function getScaledCellSize() { return cellSizePx * scale; }
 
@@ -197,16 +213,10 @@ function reset() {
     isRunning = false;
     setCells();
     setState(new PauseState());
+    history = [];
 }
 
-/**
- * Sets the cursor's state
- * @param {GameState} state
- */
 function setState(state) {
-    /**
-     * @type {HTMLCanvasElement}
-     */
     const lifeCanvas = (document.getElementById("lifeCanvas"));
 
     lifeCanvas.onmouseup = (e => {
@@ -228,6 +238,14 @@ function setState(state) {
     lifeCanvas.onwheel = (e => {
         state.onWheel(e);
     });
+
+    let controlButtons = document.getElementsByClassName("gol-control-button");
+    for (let i = 0; i < controlButtons.length; i++) {
+        let button = controlButtons.item(i);
+        button.classList.remove("disabled");
+    }
+
+    document.getElementById(state.getButtonId()).classList.add("disabled");
 }
 
 function mod(v, d) {
@@ -267,6 +285,7 @@ function countNeighbours(x, y, cells) {
 
 function update() {
     let copy = copyCells(cells);
+    history[history.length + 1] = copy;
 
     for (let i = 0; i < worldSize; i++) {
         for (let j = 0; j < worldSize; j++) {
@@ -302,6 +321,20 @@ function drawLine(ctx, x1, y1, x2, y2) {
     ctx.lineTo(x2, y2);
     ctx.closePath();
     ctx.stroke();
+}
+
+function onHistoryChange(rangeInput) {
+
+}
+
+function onSpeedChange(rangeInput) {
+    const value = Number(rangeInput.value);
+
+    if (value > 0) {
+        speed = value;
+    }
+
+    loop();
 }
 
 /**
@@ -392,19 +425,45 @@ function render(lifeCanvas) {
 }
 
 function loop() {
+    if (updateInterval !== null) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+    }
+
+    if (renderInterval !== null) {
+        clearInterval(renderInterval);
+        renderInterval = null;
+    }
+
     updateInterval = setInterval(() => {
         if (isRunning) {
             update();
         }
-    }, loopTimeMs);
+    }, (1000 / speed));
 
     renderInterval = setInterval(() => {
         render(document.getElementById("lifeCanvas"));
-    }, loopTimeMs);
+    }, 16);
 }
 
 (function () {
     init();
     loop();
     setState(new PauseState());
+
+    new bootstrap.Popover(document.getElementById("historyButton"), {
+        html: true,
+        placement: "bottom",
+        title: "History",
+        content: document.getElementById("historyControl").innerHTML,
+        sanitize  : false
+    });
+
+    new bootstrap.Popover(document.getElementById("speedButton"), {
+        html: true,
+        placement: "bottom",
+        title: "Speed",
+        content: document.getElementById("speedControl").innerHTML,
+        sanitize  : false
+    });
 })();
